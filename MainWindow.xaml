@@ -1,0 +1,99 @@
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="server-login"
+        Width="1180"
+        Height="720"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,8,8,4">
+            <Button x:Name="RefreshButton" Content="更新" Padding="10,4" Margin="0,0,8,0" />
+            <Button x:Name="SettingsButton" Content="設定" Padding="10,4" Margin="0,0,8,0" />
+            <Button x:Name="OpenListButton" Content="サーバ一覧を開く" Padding="10,4" Margin="0,0,8,0" />
+            <Button x:Name="EncryptPasswordButton" Content="パスワード暗号化" Padding="10,4" Margin="0,0,8,0"
+                    ToolTip="パスワードを DPAPI で暗号化して YAML に貼り付けられる文字列を生成" />
+            <TextBlock x:Name="ServerListPathText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="Gray" />
+        </StackPanel>
+
+        <!-- Filter row -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,4,8,8">
+            <TextBlock Text="検索:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox x:Name="SearchBox" Width="240" Padding="4,2" VerticalAlignment="Center" />
+            <TextBlock Text="環境:" VerticalAlignment="Center" Margin="16,0,6,0" />
+            <ComboBox x:Name="EnvFilterCombo" Width="140" VerticalAlignment="Center" />
+            <TextBlock x:Name="CountText" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="Gray" />
+        </StackPanel>
+
+        <!-- Main split -->
+        <Grid Grid.Row="2" Margin="8,0,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="380" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Server grid -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="サーバ一覧" FontWeight="Bold" Margin="0,0,0,4" />
+                <DataGrid x:Name="ServerGrid" Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          AlternatingRowBackground="#F8F8F8">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ホスト名" Binding="{Binding Name}" Width="170" />
+                        <DataGridTextColumn Header="OS" Binding="{Binding OS}" Width="70" />
+                        <DataGridTextColumn Header="IP/接続先" Binding="{Binding EffectiveHost}" Width="140" />
+                        <DataGridTextColumn Header="ユーザ" Binding="{Binding User}" Width="120" />
+                        <DataGridTextColumn Header="環境" Binding="{Binding Environment}" Width="80" />
+                        <DataGridTextColumn Header="権限" Binding="{Binding Role}" Width="80" />
+                        <DataGridTextColumn Header="開発中" Binding="{Binding DevelopmentLabel}" Width="60" />
+                        <DataGridTextColumn Header="備考" Binding="{Binding Note}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- Detail pane -->
+            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1,0,0,0" Padding="14,0,0,0" Margin="8,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="選択中サーバ" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBlock Grid.Row="1" x:Name="DetailNameText" FontSize="14" FontWeight="Bold" Margin="0,0,0,6" />
+                    <TextBlock Grid.Row="2" x:Name="DetailInfoText" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <Border Grid.Row="3" x:Name="WarningPanel" Background="#FFF4D6" BorderBrush="#F0AD4E" BorderThickness="1" Padding="8" Margin="0,0,0,8" Visibility="Collapsed">
+                        <TextBlock x:Name="WarningText" TextWrapping="Wrap" Foreground="#8A4F00" />
+                    </Border>
+                    <StackPanel Grid.Row="4" Orientation="Vertical">
+                        <Button x:Name="ConnectRdpButton" Content="リモートデスクトップ (RDP)" Padding="12,6" Margin="0,0,0,6" />
+                        <Button x:Name="ConnectSshButton" Content="SSH (Tera Term / PuTTY)" Padding="12,6" Margin="0,0,0,6" />
+                        <Button x:Name="ConnectSftpButton" Content="SFTP (WinSCP)" Padding="12,6" Margin="0,0,0,6" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="3" BorderBrush="#CCC" BorderThickness="0,1,0,0" Padding="8,4">
+            <TextBlock x:Name="StatusBarText" Text="Ready" />
+        </Border>
+    </Grid>
+</Window>

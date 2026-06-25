@@ -1,0 +1,68 @@
+# ============================================================
+# server-login サーバ一覧サンプル
+#
+# 配置先（既定）: %USERPROFILE%\.server-login\servers.yaml
+# 別パスに置きたい場合は GUI の「設定」で指定可能。
+#
+# 必須キー: name
+# OS: Linux または Windows（既定 Linux）
+# IP 未指定 → name で接続
+# password 未指定かつ key_file 未指定 → 接続時にダイアログで入力
+# password は平文保存可能だが非推奨。GUI の「パスワード暗号化」で
+# DPAPI 暗号化文字列を生成して password_protected に貼ること。
+# environment が「本番」かつ in_development が false の場合、接続時
+# に確認ダイアログが出る。in_development: true で抑制可能。
+# ============================================================
+
+servers:
+  # Linux 本番（鍵認証）
+  - name: web-prod-01
+    os: Linux
+    ip: 10.0.1.10
+    user: ec2-user
+    key_file: C:\Users\you\.ssh\prod_rsa
+    environment: 本番
+    role: 一般
+    note: フロントエンド Web (nginx)
+
+  # Linux 本番（パスワード暗号化）
+  - name: db-prod-01
+    os: Linux
+    ip: 10.0.1.20
+    user: ops
+    password_protected: 01000000d08c9ddf0115d1118c7a00c04fc297eb010000ffffffffffffffffffff...
+    environment: 本番
+    role: 管理者
+    note: PostgreSQL primary
+
+  # Windows 本番（パスワード未記載 → 接続時入力）
+  - name: app-prod-01
+    os: Windows
+    ip: 10.0.1.30
+    user: Administrator
+    environment: 本番
+    role: 管理者
+    note: アプリ AP01
+
+  # Linux 開発中（本番アカウントだが基盤構築中）
+  - name: web-prod-02
+    os: Linux
+    ip: 10.0.1.11
+    user: ec2-user
+    environment: 本番
+    in_development: true
+    note: Web 増設準備中
+
+  # 検証環境（警告なし）
+  - name: app-stg-01
+    os: Windows
+    user: stgadmin
+    environment: 検証
+    note: ステージング
+
+  # 開発端末（IP 省略 = DNS / hosts 解決）
+  - name: dev-jump.example.local
+    os: Linux
+    user: dev
+    environment: 開発
+    note: 開発用踏み台
