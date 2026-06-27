@@ -3,7 +3,7 @@
     server-login application settings persistence.
 .DESCRIPTION
     Stores user settings under %LOCALAPPDATA%\server-login\settings.json.
-    Tracks: TeraTermPath / PuTTYPath / WinSCPPath / DefaultSshClient / ServerListPath.
+    Tracks: TeraTermPath / PuTTYPath / WinSCPPath / DefaultSshClient / ServerListPath / ScreenshotRootPath / ScreenshotHotkey.
     PowerShell 5.1 compatible.
 #>
 
@@ -33,6 +33,8 @@ function Get-AppSettings {
         WinSCPPath       = $null
         DefaultSshClient = 'TeraTerm'  # TeraTerm or PuTTY
         ServerListPath   = $null
+        ScreenshotRootPath = $null
+        ScreenshotHotkey = 'Ctrl+Alt+S'
     }
 
     $path = Get-SettingsPath
@@ -54,9 +56,11 @@ function Get-AppSettings {
         WinSCPPath       = $defaults.WinSCPPath
         DefaultSshClient = $defaults.DefaultSshClient
         ServerListPath   = $defaults.ServerListPath
+        ScreenshotRootPath = $defaults.ScreenshotRootPath
+        ScreenshotHotkey = $defaults.ScreenshotHotkey
     }
 
-    foreach ($k in 'TeraTermPath','PuTTYPath','WinSCPPath','DefaultSshClient','ServerListPath') {
+    foreach ($k in 'TeraTermPath','PuTTYPath','WinSCPPath','DefaultSshClient','ServerListPath','ScreenshotRootPath','ScreenshotHotkey') {
         if ($obj.PSObject.Properties.Name -contains $k) {
             $v = $obj.$k
             if ($null -ne $v -and -not [string]::IsNullOrWhiteSpace([string]$v)) {
@@ -81,7 +85,9 @@ function Save-AppSettings {
         [AllowNull()][AllowEmptyString()][string]$PuTTYPath,
         [AllowNull()][AllowEmptyString()][string]$WinSCPPath,
         [ValidateSet('TeraTerm', 'PuTTY')][string]$DefaultSshClient = 'TeraTerm',
-        [AllowNull()][AllowEmptyString()][string]$ServerListPath
+        [AllowNull()][AllowEmptyString()][string]$ServerListPath,
+        [AllowNull()][AllowEmptyString()][string]$ScreenshotRootPath,
+        [AllowNull()][AllowEmptyString()][string]$ScreenshotHotkey
     )
 
     $dir = Get-SettingsDirectory
@@ -101,6 +107,8 @@ function Save-AppSettings {
         WinSCPPath       = & $norm $WinSCPPath
         DefaultSshClient = $DefaultSshClient
         ServerListPath   = & $norm $ServerListPath
+        ScreenshotRootPath = & $norm $ScreenshotRootPath
+        ScreenshotHotkey = if ([string]::IsNullOrWhiteSpace($ScreenshotHotkey)) { 'Ctrl+Alt+S' } else { $ScreenshotHotkey.Trim() }
     }
     $json = $obj | ConvertTo-Json -Depth 3
     Set-Content -LiteralPath (Get-SettingsPath) -Value $json -Encoding UTF8 -ErrorAction Stop

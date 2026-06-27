@@ -34,6 +34,11 @@ Describe 'ConnectionLauncher' {
             $r.Args | Should -Contain '/keyfile=C:\k.pem'
         }
 
+        It 'Tera Term adds log path when provided' {
+            $r = Start-TeraTermSession -ExecutablePath $script:DummyExe -Host '10.0.0.1' -LogPath 'C:\logs\teraterm.log'
+            $r.Args | Should -Contain '/L=C:\logs\teraterm.log'
+        }
+
         It 'PuTTY with password uses -pw' {
             $r = Start-PuTTYSession -ExecutablePath $script:DummyExe -Host 'h' -User 'u' -Password 'pw'
             $r.Args | Should -Contain '-pw'
@@ -48,6 +53,12 @@ Describe 'ConnectionLauncher' {
             ($r.Args -contains '-pw') | Should -BeFalse
         }
 
+        It 'PuTTY adds session log path when provided' {
+            $r = Start-PuTTYSession -ExecutablePath $script:DummyExe -Host 'h' -LogPath 'C:\logs\putty.log'
+            $r.Args | Should -Contain '-sessionlog'
+            $r.Args | Should -Contain 'C:\logs\putty.log'
+        }
+
         It 'WinSCP encodes user:password into sftp URL' {
             $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -User 'u' -Password 'p@ss'
             ($r.Args[0]) | Should -BeLike 'sftp://u:p%40ss@h/*'
@@ -57,6 +68,11 @@ Describe 'ConnectionLauncher' {
             $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -User 'u' -Password 'unused' -KeyFile 'C:\k.ppk'
             ($r.Args[0]) | Should -BeLike 'sftp://u@h/*'
             $r.Args | Should -Contain '/privatekey=C:\k.ppk'
+        }
+
+        It 'WinSCP adds log path when provided' {
+            $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -LogPath 'C:\logs\winscp.log'
+            $r.Args | Should -Contain '/log=C:\logs\winscp.log'
         }
     }
 

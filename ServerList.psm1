@@ -8,7 +8,8 @@
     Server schema (per item):
       name             [required]  hostname or display name
       os               Linux | Windows
-      ip               optional   IP address; falls back to name when omitted
+      host             optional   connection host name or IP; falls back to name when omitted
+      ip               optional   legacy alias for host
       user             optional   login user name
       password         optional   plaintext (warn -- use password_protected instead)
       password_protected optional DPAPI-encrypted ciphertext (Protect-Password output)
@@ -115,8 +116,14 @@ function ConvertTo-Server {
     $os = $os.Trim()
     if ($os -ne 'Windows' -and $os -ne 'Linux') { $os = 'Linux' }
 
-    $ip = if ($Item.ContainsKey('ip')) { [string]$Item['ip'] } else { '' }
-    $effective = if ([string]::IsNullOrWhiteSpace($ip)) { $name } else { $ip }
+    $host = ''
+    if ($Item.ContainsKey('host')) {
+        $host = [string]$Item['host']
+    }
+    elseif ($Item.ContainsKey('ip')) {
+        $host = [string]$Item['ip']
+    }
+    $effective = if ([string]::IsNullOrWhiteSpace($host)) { $name } else { $host }
 
     $inDev = $false
     if ($Item.ContainsKey('in_development')) {
@@ -127,7 +134,8 @@ function ConvertTo-Server {
     return [PSCustomObject]@{
         Name              = $name
         OS                = $os
-        IP                = $ip
+        Host              = $host
+        IP                = $host
         EffectiveHost     = $effective
         User              = if ($Item.ContainsKey('user')) { [string]$Item['user'] } else { '' }
         Password          = if ($Item.ContainsKey('password')) { [string]$Item['password'] } else { '' }

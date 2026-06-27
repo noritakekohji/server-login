@@ -11,7 +11,7 @@ Describe 'ServerList' {
 servers:
   - name: web-prod-01
     os: Linux
-    ip: 10.0.1.10
+    host: 10.0.1.10
     user: ec2-user
     environment: 本番
     role: 一般
@@ -55,7 +55,7 @@ servers:
             $b = $srvs | Where-Object Name -EQ 'app-prod-01'
             $b.InDevelopment | Should -BeTrue
         }
-        It 'falls back EffectiveHost to name when IP omitted' {
+        It 'falls back EffectiveHost to name when host omitted' {
             $srvs = Import-ServerList -Path $script:Tmp
             $b = $srvs | Where-Object Name -EQ 'app-prod-01'
             $b.EffectiveHost | Should -Be 'app-prod-01'
@@ -66,6 +66,12 @@ servers:
             $srvs = Import-ServerList -Path $script:Tmp
             $c = $srvs | Where-Object Name -EQ 'only-name'
             $c.OS | Should -Be 'Linux'
+        }
+
+        It 'still accepts legacy ip as host' {
+            $srv = ConvertTo-Server -Item @{ name = 'legacy-ip'; ip = '192.0.2.10' }
+            $srv.Host | Should -Be '192.0.2.10'
+            $srv.EffectiveHost | Should -Be '192.0.2.10'
         }
     }
 

@@ -14,14 +14,25 @@ function _BuildResult {
         [Parameter(Mandatory = $true)][bool]$Success,
         [string]$Message,
         [string]$Command,
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [AllowNull()][int]$ProcessId = 0
     )
     return [PSCustomObject]@{
         Success = $Success
         Message = $Message
         Command = $Command
         Args    = $Arguments
+        ProcessId = $ProcessId
     }
+}
+
+function _QuoteIfNeeded {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $Value }
+    if ($Value -match '\s') {
+        return '"' + $Value.Replace('"', '\"') + '"'
+    }
+    return $Value
 }
 
 function _StartProcess {
@@ -30,17 +41,20 @@ function _StartProcess {
         [string[]]$ArgumentList,
         [string]$ToolName
     )
-    if (-not (Test-Path -LiteralPath $FilePath)) {
+    $parentPath = Split-Path -Parent $FilePath
+    if (-not [string]::IsNullOrWhiteSpace($parentPath) -and -not (Test-Path -LiteralPath $FilePath)) {
         return _BuildResult -Success $false -Message "${ToolName} の実行ファイルが見つかりません: $FilePath" -Command $FilePath -Arguments $ArgumentList
     }
     try {
+        $proc = $null
         if ($null -eq $ArgumentList -or $ArgumentList.Count -eq 0) {
-            Start-Process -FilePath $FilePath -ErrorAction Stop | Out-Null
+            $proc = Start-Process -FilePath $FilePath -PassThru -ErrorAction Stop
         }
         else {
-            Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -ErrorAction Stop | Out-Null
+            $proc = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru -ErrorAction Stop
         }
-        return _BuildResult -Success $true -Message "${ToolName} を起動しました" -Command $FilePath -Arguments $ArgumentList
+        $pidValue = if ($null -ne $proc) { [int]$proc.Id } else { 0 }
+        return _BuildResult -Success $true -Message "${ToolName} を起動しました" -Command $FilePath -Arguments $ArgumentList -ProcessId $pidValue
     }
     catch {
         return _BuildResult -Success $false -Message "${ToolName} 起動失敗: $($_.Exception.Message)" -Command $FilePath -Arguments $ArgumentList
@@ -52,7 +66,8 @@ function Start-RdpSession {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param(
-        [Parameter(Mandatory = $true)][string]$Host
+        [Parameter(Mandatory = $true)][string]$Host,
+        [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($Host)) {
         return _BuildResult -Success $false -Message 'ホスト未指定' -Command 'mstsc.exe' -Arguments @()
@@ -70,7 +85,8 @@ function Start-TeraTermSession {
         [Parameter(Mandatory = $true)][string]$Host,
         [string]$User,
         [string]$Password,
-        [string]$KeyFile
+        [string]$KeyFile,
+        [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         return _BuildResult -Success $false -Message 'Tera Term のパスが未設定です（設定画面で指定してください）' -Command '' -Arguments @()
@@ -78,6 +94,7 @@ function Start-TeraTermSession {
     $argsList = New-Object System.Collections.Generic.List[string]
     $argsList.Add($Host)
     if (-not [string]::IsNullOrWhiteSpace($User)) { $argsList.Add("/user=$User") }
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) { $argsList.Add("/L=$(_QuoteIfNeeded $LogPath)") }
     if (-not [string]::IsNullOrWhiteSpace($KeyFile)) {
         $argsList.Add("/auth=publickey")
         $argsList.Add("/keyfile=$KeyFile")
@@ -100,7 +117,8 @@ function Start-PuTTYSession {
         [Parameter(Mandatory = $true)][string]$Host,
         [string]$User,
         [string]$Password,
-        [string]$KeyFile
+        [string]$KeyFile,
+        [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         return _BuildResult -Success $false -Message 'PuTTY のパスが未設定です（設定画面で指定してください）' -Command '' -Arguments @()
@@ -121,6 +139,10 @@ function Start-PuTTYSession {
         $argsList.Add('-pw')
         $argsList.Add($Password)
     }
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        $argsList.Add('-sessionlog')
+        $argsList.Add((_QuoteIfNeeded $LogPath))
+    }
     return _StartProcess -FilePath $ExecutablePath -ArgumentList $argsList.ToArray() -ToolName 'PuTTY'
 }
 
@@ -134,7 +156,8 @@ function Start-WinSCPSession {
         [Parameter(Mandatory = $true)][string]$Host,
         [string]$User,
         [string]$Password,
-        [string]$KeyFile
+        [string]$KeyFile,
+        [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         return _BuildResult -Success $false -Message 'WinSCP のパスが未設定です（設定画面で指定してください）' -Command '' -Arguments @()
@@ -154,6 +177,9 @@ function Start-WinSCPSession {
     $argsList.Add($url)
     if (-not [string]::IsNullOrWhiteSpace($KeyFile)) {
         $argsList.Add("/privatekey=$KeyFile")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        $argsList.Add("/log=$(_QuoteIfNeeded $LogPath)")
     }
     return _StartProcess -FilePath $ExecutablePath -ArgumentList $argsList.ToArray() -ToolName 'WinSCP'
 }
