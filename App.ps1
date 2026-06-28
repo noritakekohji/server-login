@@ -65,6 +65,27 @@ function Get-SelectedServer {
     return $serverGrid.SelectedItem
 }
 
+function Find-VisualParent {
+    [CmdletBinding()]
+    [OutputType([object])]
+    param(
+        [AllowNull()]$Start,
+        [Parameter(Mandatory = $true)][type]$Type
+    )
+
+    $current = $Start -as [System.Windows.DependencyObject]
+    while ($null -ne $current) {
+        if ($Type.IsInstanceOfType($current)) { return $current }
+        try {
+            $current = [System.Windows.Media.VisualTreeHelper]::GetParent($current)
+        }
+        catch {
+            return $null
+        }
+    }
+    return $null
+}
+
 function Register-CaptureSession {
     [CmdletBinding()]
     param(
@@ -262,6 +283,158 @@ function Show-WarningIfNeeded {
     return $true
 }
 
+function Resolve-ServerOSFamily {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [AllowNull()][AllowEmptyString()][string]$OS
+    )
+
+    $value = ''
+    if ($null -ne $OS) { $value = $OS.Trim() }
+    if ($value -match '^(?i:win|windows|rdp)$') { return 'Windows' }
+    if ($value -match '^(?i:linux|ubuntu|debian|centos|rhel|rocky|alma|amazon\s*linux)$') { return 'Linux' }
+    return $value
+}
+
+function Get-YamlScalarValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) { return '' }
+    $text = $Value.Trim()
+    if (($text.StartsWith('"') -and $text.EndsWith('"') -and $text.Length -ge 2) -or
+        ($text.StartsWith("'") -and $text.EndsWith("'") -and $text.Length -ge 2)) {
+        return $text.Substring(1, $text.Length - 2)
+    }
+    return $text
+}
+
+function Find-ServerYamlItem {
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param(
+        [AllowEmptyCollection()][string[]]$Lines,
+        [Parameter(Mandatory = $true)]$Server
+    )
+
+    if ($null -eq $Lines -or $Lines.Length -eq 0) {
+        throw 'サーバ一覧 YAML が空です。'
+    }
+
+    $items = New-Object System.Collections.Generic.List[PSCustomObject]
+    $insideServers = $false
+    $current = $null
+
+    for ($i = 0; $i -lt $Lines.Length; $i++) {
+        $line = $Lines[$i]
+        if ($line -match '^servers:\s*(#.*)?$') {
+            $insideServers = $true
+            continue
+        }
+        if (-not $insideServers) { continue }
+
+        if ($line -match '^\s*-\s*(.*)$') {
+            if ($null -ne $current) {
+                $current.End = $i - 1
+                $items.Add($current)
+            }
+            $current = [PSCustomObject]@{
+                Start                 = $i
+                End                   = $i
+                Name                  = ''
+                Host                  = ''
+                User                  = ''
+                PasswordLine          = -1
+                PasswordProtectedLine = -1
+                PasswordIndent        = '    '
+            }
+            $first = $Matches[1]
+            if ($first -match '^([^:#]+):\s*(.*)$') {
+                $key = $Matches[1].Trim()
+                $value = Get-YamlScalarValue -Value $Matches[2]
+                if ($key -eq 'name') { $current.Name = $value }
+                elseif ($key -eq 'host' -or $key -eq 'ip') { $current.Host = $value }
+                elseif ($key -eq 'user') { $current.User = $value }
+                elseif ($key -eq 'password') { $current.PasswordLine = $i; $current.PasswordIndent = '  ' }
+                elseif ($key -eq 'password_protected') { $current.PasswordProtectedLine = $i; $current.PasswordIndent = '  ' }
+            }
+            continue
+        }
+
+        if ($null -eq $current) { continue }
+        if ($line -match '^(\s+)([^:#]+):\s*(.*)$') {
+            $indent = $Matches[1]
+            $key = $Matches[2].Trim()
+            $value = Get-YamlScalarValue -Value $Matches[3]
+            if ($key -eq 'name') { $current.Name = $value }
+            elseif ($key -eq 'host' -or $key -eq 'ip') { $current.Host = $value }
+            elseif ($key -eq 'user') { $current.User = $value }
+            elseif ($key -eq 'password') { $current.PasswordLine = $i; $current.PasswordIndent = $indent }
+            elseif ($key -eq 'password_protected') { $current.PasswordProtectedLine = $i; $current.PasswordIndent = $indent }
+        }
+    }
+
+    if ($null -ne $current) {
+        $current.End = $Lines.Length - 1
+        $items.Add($current)
+    }
+
+    $candidateItems = @()
+    foreach ($item in $items) {
+        if ($item.Name -ne $Server.Name) { continue }
+        $score = 1
+        if (-not [string]::IsNullOrWhiteSpace($item.User) -and $item.User -eq $Server.User) { $score += 2 }
+        if (-not [string]::IsNullOrWhiteSpace($item.Host) -and ($item.Host -eq $Server.Host -or $item.Host -eq $Server.EffectiveHost)) { $score += 2 }
+        $candidateItems += [PSCustomObject]@{ Item = $item; Score = $score }
+    }
+
+    if ($candidateItems.Count -eq 0) { return $null }
+    return ($candidateItems | Sort-Object -Property Score -Descending | Select-Object -First 1).Item
+}
+
+function Protect-PlainPasswordInServerList {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]$Server
+    )
+
+    if ([string]::IsNullOrEmpty($Server.Password)) {
+        throw '平文パスワードはありません。'
+    }
+
+    $path = Get-EffectiveServerListPath
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "サーバ一覧ファイルが見つかりません: $path"
+    }
+
+    [string[]]$lines = @([System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8))
+    $item = Find-ServerYamlItem -Lines $lines -Server $Server
+    if ($null -eq $item -or $item.PasswordLine -lt 0) {
+        throw "YAML 内の対象サーバまたは password 行が見つかりません: $($Server.Name)"
+    }
+
+    $cipher = Protect-Password -Plain $Server.Password
+    $updated = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        if ($i -eq $item.PasswordLine) {
+            if ($item.PasswordProtectedLine -lt 0) {
+                $updated.Add("$($item.PasswordIndent)password_protected: $cipher")
+            }
+            continue
+        }
+        if ($i -eq $item.PasswordProtectedLine) {
+            $updated.Add("$($item.PasswordIndent)password_protected: $cipher")
+            continue
+        }
+        $updated.Add($lines[$i])
+    }
+
+    [System.IO.File]::WriteAllLines($path, $updated.ToArray(), (New-Object System.Text.UTF8Encoding $false))
+    return $path
+}
+
 function Get-DisplayServer {
     param(
         $Server,
@@ -269,24 +442,28 @@ function Get-DisplayServer {
     )
     if ($null -eq $Settings) { $Settings = Get-AppSettings }
     $hasSshTool = (-not [string]::IsNullOrWhiteSpace($Settings.TeraTermPath)) -or (-not [string]::IsNullOrWhiteSpace($Settings.PuTTYPath))
+    $osFamily = Resolve-ServerOSFamily -OS $Server.OS
+    $hasPlainPassword = -not [string]::IsNullOrEmpty($Server.Password)
     return [PSCustomObject]@{
         Name              = $Server.Name
         OS                = $Server.OS
+        OSFamily          = $osFamily
         Host              = $Server.Host
         IP                = $Server.Host
         EffectiveHost     = $Server.EffectiveHost
         User              = $Server.User
         Password          = $Server.Password
         PasswordProtected = $Server.PasswordProtected
+        HasPlainPassword  = $hasPlainPassword
         KeyFile           = $Server.KeyFile
         Environment       = $Server.Environment
         Role              = $Server.Role
         InDevelopment     = $Server.InDevelopment
         Note              = $Server.Note
         DevelopmentLabel  = if ($Server.InDevelopment) { '開発中' } else { '' }
-        CanRdp            = ($Server.OS -eq 'Windows')
-        CanSsh            = ($Server.OS -eq 'Linux' -and $hasSshTool)
-        CanSftp           = ($Server.OS -eq 'Linux' -and -not [string]::IsNullOrWhiteSpace($Settings.WinSCPPath))
+        CanRdp            = ($osFamily -eq 'Windows')
+        CanSsh            = ($osFamily -eq 'Linux' -and $hasSshTool)
+        CanSftp           = ($osFamily -eq 'Linux' -and -not [string]::IsNullOrWhiteSpace($Settings.WinSCPPath))
     }
 }
 
@@ -929,6 +1106,30 @@ $captureScreenshotButton.Add_Click({ Invoke-ForegroundScreenshot })
 if ($null -ne $searchBox) { $searchBox.Add_TextChanged({ Update-FilteredView }) }
 if ($null -ne $envFilterCombo) { $envFilterCombo.Add_SelectionChanged({ Update-FilteredView }) }
 $serverGrid.Add_SelectionChanged({ Update-DetailPane })
+$serverGrid.Add_MouseDoubleClick({
+    param($sender, $e)
+
+    $cell = Find-VisualParent -Start $e.OriginalSource -Type ([System.Windows.Controls.DataGridCell])
+    if ($null -eq $cell -or $null -eq $cell.Column -or ([string]$cell.Column.Header) -ne 'ユーザー') { return }
+
+    $server = $cell.DataContext
+    if ($null -eq $server -or -not $server.HasPlainPassword) { return }
+
+    $message = "サーバ '$($server.Name)' の平文 password を暗号化し、YAML を password_protected に書き換えます。`n`n元の password 行は削除されます。続行しますか？"
+    $answer = [System.Windows.MessageBox]::Show($window, $message, '平文パスワードの暗号化', [System.Windows.MessageBoxButton]::OKCancel, [System.Windows.MessageBoxImage]::Warning)
+    if ($answer -ne [System.Windows.MessageBoxResult]::OK) { return }
+
+    try {
+        $path = Protect-PlainPasswordInServerList -Server $server
+        Sync-ServerList
+        $statusBarText.Text = "平文パスワードを暗号化しました: $path"
+    }
+    catch {
+        $statusBarText.Text = "暗号化エラー: $($_.Exception.Message)"
+        [System.Windows.MessageBox]::Show($window, $_.Exception.Message, '暗号化エラー', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+    }
+    $e.Handled = $true
+})
 $serverGrid.AddHandler(
     [System.Windows.Controls.Button]::ClickEvent,
     [System.Windows.RoutedEventHandler]{

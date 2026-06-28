@@ -84,6 +84,8 @@ servers:
 3. **平文**: `password: <plain>` — 非推奨。検証用途のみ
 
 OS の認証情報マネージャ（cmdkey 等）には**保存しません**。
+平文パスワードが残っているサーバは一覧のユーザーセルが黄色になり、ダブルクリックで
+`password_protected:` へ暗号化して YAML を書き換えられます。
 
 ## テスト
 
@@ -93,7 +95,7 @@ Invoke-Pester -Path tests/
 
 ## バージョン
 
-現在: **0.1.0** — 変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照。
+現在: **1.0.0** — 変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照。
 
 ## 将来予定
 

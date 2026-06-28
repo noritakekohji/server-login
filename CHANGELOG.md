@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-06-29
 
 ### Added
 - 前面ウィンドウのスクリーンショット保存機能を追加。
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 設定画面で記録ショートカットを指定できるようにした。
 - 記録ショートカットを文字入力ではなく、ボタン押下後のキー入力で登録できるようにした。
 - 接続ツールのログ出力先を `log\<host-id>\` にまとめ、起動ログも同じフォルダへ保存するようにした。
+- 平文パスワードが YAML に残っているサーバのユーザーセルを黄色表示し、注意アイコンとダブルクリック暗号化を追加。
 
 ### Changed
 - 記録保存先を `<保存先>\yyyy-MM-dd-<WindowsユーザID>\capture\<host-id>\` に変更し、リモート接続に紐づかない記録は `capture\local\` に保存するように変更。
@@ -25,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - サーバ接続パネルの「閉じる」でランチャーバーサイズへ戻るように修正。
 - 設定画面の下部が切れないようにリサイズ可能化し、記録ショートカット登録で修飾キー単体を押した時は確定せず待機するように修正。
 - ランチャーにアイコンを追加し、接続ボタンは RDP / SSH / SFTP ごとに色分け。
+- サーバ一覧を「接続 / ホスト / 接続先 / ユーザー / 環境 / 備考」の順に整理し、OS は小さな WIN / LNX バッジで表示。
+- 接続ボタンを小型化し、無効な接続種別は淡い表示に変更。
 
 ## [0.1.0] - 2026-06-26
 

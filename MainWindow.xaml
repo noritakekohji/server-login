@@ -103,13 +103,12 @@
         <Style x:Key="ToolbarButtonStyle" BasedOn="{StaticResource LauncherButtonStyle}" TargetType="{x:Type Button}" />
         <Style x:Key="CompactActionButtonStyle" BasedOn="{StaticResource PrimaryButtonStyle}" TargetType="{x:Type Button}" />
         <Style x:Key="ColorActionButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Foreground" Value="White" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="0,0,4,0" />
-            <Setter Property="MinHeight" Value="26" />
-            <Setter Property="MinWidth" Value="50" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="3,0" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="MinWidth" Value="30" />
+            <Setter Property="FontSize" Value="9" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -119,22 +118,22 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="5">
+                                CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.86" />
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.92" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.72" />
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.78" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#E2E8F0" />
-                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#94A3B8" />
-                                <Setter Property="Foreground" Value="#475569" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#F8FAFC" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#E2E8F0" />
+                                <Setter Property="Foreground" Value="#B7C2D0" />
                                 <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -143,16 +142,20 @@
             </Setter>
         </Style>
         <Style x:Key="RdpActionButtonStyle" BasedOn="{StaticResource ColorActionButtonStyle}" TargetType="{x:Type Button}">
-            <Setter Property="Background" Value="#2563EB" />
-            <Setter Property="BorderBrush" Value="#1D4ED8" />
+            <Setter Property="Background" Value="#EAF1FF" />
+            <Setter Property="BorderBrush" Value="#93B4F8" />
+            <Setter Property="Foreground" Value="#1D4ED8" />
         </Style>
         <Style x:Key="SshActionButtonStyle" BasedOn="{StaticResource ColorActionButtonStyle}" TargetType="{x:Type Button}">
-            <Setter Property="Background" Value="#0F766E" />
-            <Setter Property="BorderBrush" Value="#0B5F59" />
+            <Setter Property="Background" Value="#E6F7F4" />
+            <Setter Property="BorderBrush" Value="#76BEB7" />
+            <Setter Property="Foreground" Value="#0F766E" />
         </Style>
         <Style x:Key="SftpActionButtonStyle" BasedOn="{StaticResource ColorActionButtonStyle}" TargetType="{x:Type Button}">
-            <Setter Property="Background" Value="#7C3AED" />
-            <Setter Property="BorderBrush" Value="#6D28D9" />
+            <Setter Property="Background" Value="#F1EAFF" />
+            <Setter Property="BorderBrush" Value="#BCA3F5" />
+            <Setter Property="Foreground" Value="#6D28D9" />
+            <Setter Property="MinWidth" Value="34" />
         </Style>
 
         <Style x:Key="FieldStyle" TargetType="{x:Type TextBox}">
@@ -204,12 +207,37 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="PlainPasswordUserCellStyle" TargetType="{x:Type DataGridCell}">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasPlainPassword}" Value="True">
+                    <Setter Property="Background" Value="#FFF3BF" />
+                    <Setter Property="ToolTip" Value="平文パスワードが保存されています。ユーザーセルをダブルクリックすると暗号化してYAMLを書き換えます。" />
+                </DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#DDF4F7" />
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                </Trigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding HasPlainPassword}" Value="True" />
+                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#FDE68A" />
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="GridTextBlockStyle" TargetType="{x:Type TextBlock}">
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="LineHeight" Value="15" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="LineHeight" Value="16" />
+            <Setter Property="FontSize" Value="13" />
         </Style>
     </Window.Resources>
 
@@ -330,7 +358,6 @@
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
                           SelectionUnit="FullRow"
-                          AlternatingRowBackground="#F8FAFC"
                           HorizontalGridLinesBrush="#EDF1F6"
                           VerticalGridLinesBrush="#EDF1F6">
                     <DataGrid.RowStyle>
@@ -350,17 +377,10 @@
                         </Style>
                     </DataGrid.RowStyle>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="ホスト" Binding="{Binding Name}" Width="150" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="OS" Binding="{Binding OS}" Width="58" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="接続先" Binding="{Binding EffectiveHost}" Width="130" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="ユーザ" Binding="{Binding User}" Width="100" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="環境" Binding="{Binding Environment}" Width="70" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="権限" Binding="{Binding Role}" Width="70" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTextColumn Header="備考" Binding="{Binding Note}" Width="*" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTemplateColumn Header="接続" Width="174">
+                        <DataGridTemplateColumn Header="接続" Width="108">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Button Content="RDP" Tag="RDP" IsEnabled="{Binding CanRdp}" Style="{StaticResource RdpActionButtonStyle}" />
                                         <Button Content="SSH" Tag="SSH" IsEnabled="{Binding CanSsh}" Style="{StaticResource SshActionButtonStyle}" />
                                         <Button Content="SFTP" Tag="SFTP" IsEnabled="{Binding CanSftp}" Style="{StaticResource SftpActionButtonStyle}" />
@@ -368,6 +388,79 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="ホスト" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                                        <Border x:Name="OsBadge"
+                                                Width="28"
+                                                Height="16"
+                                                Background="#F1F5F9"
+                                                BorderBrush="#CBD5E1"
+                                                BorderThickness="1"
+                                                CornerRadius="0"
+                                                Margin="0,0,8,0">
+                                            <TextBlock x:Name="OsBadgeText"
+                                                       Text="OS"
+                                                       Foreground="#64748B"
+                                                       FontSize="8"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}"
+                                                   Style="{StaticResource GridTextBlockStyle}" />
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding OSFamily}" Value="Windows">
+                                            <Setter TargetName="OsBadge" Property="Background" Value="#EAF1FF" />
+                                            <Setter TargetName="OsBadge" Property="BorderBrush" Value="#93B4F8" />
+                                            <Setter TargetName="OsBadgeText" Property="Text" Value="WIN" />
+                                            <Setter TargetName="OsBadgeText" Property="Foreground" Value="#1D4ED8" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding OSFamily}" Value="Linux">
+                                            <Setter TargetName="OsBadge" Property="Background" Value="#E6F7F4" />
+                                            <Setter TargetName="OsBadge" Property="BorderBrush" Value="#76BEB7" />
+                                            <Setter TargetName="OsBadgeText" Property="Text" Value="LNX" />
+                                            <Setter TargetName="OsBadgeText" Property="Foreground" Value="#0F766E" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="接続先" Binding="{Binding EffectiveHost}" Width="150" ElementStyle="{StaticResource GridTextBlockStyle}" />
+                        <DataGridTemplateColumn Header="ユーザー" Width="120" CellStyle="{StaticResource PlainPasswordUserCellStyle}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border x:Name="PlainPasswordIcon"
+                                                Width="14"
+                                                Height="14"
+                                                Margin="0,0,5,0"
+                                                Background="#F59E0B"
+                                                BorderBrush="#D97706"
+                                                BorderThickness="1"
+                                                Visibility="Collapsed">
+                                            <TextBlock Text="!"
+                                                       Foreground="#FFFFFF"
+                                                       FontSize="10"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,-1,0,0" />
+                                        </Border>
+                                        <TextBlock Text="{Binding User}" Style="{StaticResource GridTextBlockStyle}" />
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding HasPlainPassword}" Value="True">
+                                            <Setter TargetName="PlainPasswordIcon" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="環境" Binding="{Binding Environment}" Width="90" ElementStyle="{StaticResource GridTextBlockStyle}" />
+                        <DataGridTextColumn Header="備考" Binding="{Binding Note}" Width="*" ElementStyle="{StaticResource GridTextBlockStyle}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
