@@ -76,7 +76,7 @@ Describe 'ConnectionLauncher' {
             $r.Args | Should -Contain '/log=C:\logs\winscp.log'
         }
 
-        It 'RDP launches mstsc with a local-account .rdp file without cmdkey' {
+        It 'RDP launches mstsc with /v host argument' {
             $calls = New-Object System.Collections.Generic.List[object]
             Mock -ModuleName ConnectionLauncher Start-Process {
                 $calls.Add([PSCustomObject]@{
@@ -85,17 +85,12 @@ Describe 'ConnectionLauncher' {
                 })
             }
 
-            $r = Start-RdpSession -Host 'winhost' -User 'localuser'
+            $r = Start-RdpSession -Host 'winhost'
 
             $r.Success | Should -BeTrue
             $calls.Count | Should -Be 1
             $calls[0].FilePath | Should -Be 'mstsc.exe'
-            $rdpPath = [string]$calls[0].ArgumentList[0]
-            $rdpText = Get-Content -LiteralPath $rdpPath -Raw -Encoding UTF8
-            $rdpText | Should -Match 'full address:s:winhost'
-            $rdpText | Should -Match 'username:s:\.\\localuser'
-            $rdpText | Should -Not -Match 'password'
-            Remove-Item -LiteralPath $rdpPath -Force
+            $calls[0].ArgumentList | Should -Contain '/v:winhost'
         }
     }
 

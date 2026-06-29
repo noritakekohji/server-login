@@ -228,7 +228,6 @@ function Show-ProtectedPasswordDialog {
         [Parameter(Mandatory = $true)][string]$Password
     )
 
-    [System.Windows.Clipboard]::SetText($Password)
     $dialogXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -236,7 +235,6 @@ function Show-ProtectedPasswordDialog {
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Grid Margin="14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -249,13 +247,7 @@ function Show-ProtectedPasswordDialog {
                  Padding="6,4"
                  Margin="0,0,0,8"
                  FontFamily="Consolas"/>
-        <TextBlock Grid.Row="2"
-                   Text="クリップボードにもコピーしました。"
-                   Foreground="#64748B"
-                   FontSize="12"
-                   Margin="0,0,0,12"/>
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="CopyButton" Content="再コピー" Width="84" Padding="0,5" Margin="0,0,8,0"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="CloseButton" Content="閉じる" Width="84" Padding="0,5" IsDefault="True"/>
         </StackPanel>
     </Grid>
@@ -268,9 +260,6 @@ function Show-ProtectedPasswordDialog {
     $dialog.Owner = $window
     $dialog.FindName('MessageText').Text = "サーバ '$($Server.Name)' の暗号化パスワードを復号しました。"
     $dialog.FindName('PasswordBox').Text = $Password
-    $dialog.FindName('CopyButton').Add_Click({
-        [System.Windows.Clipboard]::SetText($Password)
-    })
     $dialog.FindName('CloseButton').Add_Click({ $dialog.Close() })
     $dialog.ShowDialog() | Out-Null
 }
@@ -981,21 +970,10 @@ function Invoke-ServerConnection {
     if ($Kind -eq 'RDP') {
         if ($Server.OSFamily -ne 'Windows') { $statusBarText.Text = 'RDP は Windows サーバ用です'; return }
         $logContext = Get-ConnectionLogContext -Server $Server -Id 'rdp' -Tool 'rdp'
-        $passwordCopied = $false
-        $rdpPassword = Get-PasswordForServer -Server $Server
-        if (-not [string]::IsNullOrEmpty($rdpPassword)) {
-            [System.Windows.Clipboard]::SetText($rdpPassword)
-            $passwordCopied = $true
-        }
-        $r = Start-RdpSession -Host $Server.EffectiveHost -User $Server.User -LogPath $logContext.ToolLogPath
+        $r = Start-RdpSession -Host $Server.EffectiveHost -LogPath $logContext.ToolLogPath
         Write-ConnectionLaunchLog -Result $r -LogContext $logContext -Tool 'rdp'
         if ($r.Success) { Register-CaptureSession -Server $Server -Id 'rdp' -ProcessId $r.ProcessId }
-        if ($r.Success -and $passwordCopied) {
-            $statusBarText.Text = "$($r.Message) / パスワードをクリップボードにコピーしました"
-        }
-        else {
-            $statusBarText.Text = $r.Message
-        }
+        $statusBarText.Text = $r.Message
         return
     }
 
@@ -1207,7 +1185,7 @@ $serverGrid.Add_MouseDoubleClick({
             $password = Unprotect-Password -Protected $server.PasswordProtected
             if ([string]::IsNullOrEmpty($password)) { return }
             Show-ProtectedPasswordDialog -Server $server -Password $password
-            $statusBarText.Text = "暗号化パスワードを表示し、クリップボードにコピーしました: $($server.Name)"
+            $statusBarText.Text = "暗号化パスワードを表示しました: $($server.Name)"
         }
         catch {
             $statusBarText.Text = "復号エラー: $($_.Exception.Message)"

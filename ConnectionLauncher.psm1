@@ -35,31 +35,6 @@ function _QuoteIfNeeded {
     return $Value
 }
 
-function _GetLocalRdpUserName {
-    param([string]$User)
-    if ([string]::IsNullOrWhiteSpace($User)) { return '' }
-    if ($User -match '[\\@]') { return $User }
-    return ".\$User"
-}
-
-function _NewRdpFile {
-    param(
-        [Parameter(Mandatory = $true)][string]$Host,
-        [string]$User
-    )
-
-    $path = Join-Path ([System.IO.Path]::GetTempPath()) ("server-login-{0}.rdp" -f ([guid]::NewGuid().ToString('N')))
-    $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add("full address:s:$Host")
-    if (-not [string]::IsNullOrWhiteSpace($User)) {
-        $lines.Add("username:s:$(_GetLocalRdpUserName -User $User)")
-    }
-    $lines.Add('prompt for credentials:i:1')
-    $lines.Add('authentication level:i:2')
-    [System.IO.File]::WriteAllLines($path, $lines.ToArray(), (New-Object System.Text.UTF8Encoding $false))
-    return $path
-}
-
 function _StartProcess {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
@@ -92,16 +67,10 @@ function Start-RdpSession {
     [OutputType([PSCustomObject])]
     param(
         [Parameter(Mandatory = $true)][string]$Host,
-        [string]$User,
         [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($Host)) {
         return _BuildResult -Success $false -Message 'ホスト未指定' -Command 'mstsc.exe' -Arguments @()
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($User)) {
-        $rdpPath = _NewRdpFile -Host $Host -User $User
-        return _StartProcess -FilePath 'mstsc.exe' -ArgumentList @($rdpPath) -ToolName 'リモートデスクトップ (mstsc)'
     }
 
     return _StartProcess -FilePath 'mstsc.exe' -ArgumentList @("/v:$Host") -ToolName 'リモートデスクトップ (mstsc)'
