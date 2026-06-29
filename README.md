@@ -73,6 +73,7 @@ servers:
 ```
 
 全フィールドは [`servers.example.yaml`](servers.example.yaml) と[ServerList.psm1](ServerList.psm1) を参照。
+鍵ファイルは `key_file` が正式キーですが、既存YAML互換として `keyfile` / `key` も読み取れます。
 
 ## パスワードの扱い
 

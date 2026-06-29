@@ -131,6 +131,14 @@ function ConvertTo-Server {
         if ($v -match '^(?i:true|yes|1)$') { $inDev = $true }
     }
 
+    $keyFile = ''
+    foreach ($keyName in 'key_file','keyfile','key','private_key','identity_file') {
+        if ($Item.ContainsKey($keyName)) {
+            $keyFile = [string]$Item[$keyName]
+            break
+        }
+    }
+
     return [PSCustomObject]@{
         Name              = $name
         OS                = $os
@@ -140,7 +148,7 @@ function ConvertTo-Server {
         User              = if ($Item.ContainsKey('user')) { [string]$Item['user'] } else { '' }
         Password          = if ($Item.ContainsKey('password')) { [string]$Item['password'] } else { '' }
         PasswordProtected = if ($Item.ContainsKey('password_protected')) { [string]$Item['password_protected'] } else { '' }
-        KeyFile           = if ($Item.ContainsKey('key_file')) { [string]$Item['key_file'] } else { '' }
+        KeyFile           = $keyFile
         Environment       = if ($Item.ContainsKey('environment')) { [string]$Item['environment'] } else { '' }
         Role              = if ($Item.ContainsKey('role')) { [string]$Item['role'] } else { '' }
         InDevelopment     = $inDev

@@ -73,6 +73,14 @@ servers:
             $srv.Host | Should -Be '192.0.2.10'
             $srv.EffectiveHost | Should -Be '192.0.2.10'
         }
+
+        It 'accepts keyfile aliases as key file' {
+            $srv = ConvertTo-Server -Item @{ name = 'key-alias'; keyfile = 'C:\keys\id.ppk' }
+            $srv.KeyFile | Should -Be 'C:\keys\id.ppk'
+
+            $srv2 = ConvertTo-Server -Item @{ name = 'key-short'; key = 'C:\keys\id.pem' }
+            $srv2.KeyFile | Should -Be 'C:\keys\id.pem'
+        }
     }
 
     Context 'Import-ServerList missing file' {

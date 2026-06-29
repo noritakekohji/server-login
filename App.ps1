@@ -221,6 +221,60 @@ function Resolve-Password {
     return (Read-PasswordInteractively -Prompt "ホスト '$($Server.Name)' のパスワード")
 }
 
+function Show-ProtectedPasswordDialog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]$Server,
+        [Parameter(Mandatory = $true)][string]$Password
+    )
+
+    [System.Windows.Clipboard]::SetText($Password)
+    $dialogXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="暗号化パスワード" Width="420" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="MessageText" Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBox x:Name="PasswordBox"
+                 Grid.Row="1"
+                 IsReadOnly="True"
+                 Padding="6,4"
+                 Margin="0,0,0,8"
+                 FontFamily="Consolas"/>
+        <TextBlock Grid.Row="2"
+                   Text="クリップボードにもコピーしました。"
+                   Foreground="#64748B"
+                   FontSize="12"
+                   Margin="0,0,0,12"/>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CopyButton" Content="再コピー" Width="84" Padding="0,5" Margin="0,0,8,0"/>
+            <Button x:Name="CloseButton" Content="閉じる" Width="84" Padding="0,5" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
+'@
+
+    [xml]$xamlDoc = $dialogXaml
+    $reader = New-Object System.Xml.XmlNodeReader $xamlDoc
+    $dialog = [Windows.Markup.XamlReader]::Load($reader)
+    $dialog.Owner = $window
+    $dialog.FindName('MessageText').Text = "サーバ '$($Server.Name)' の暗号化パスワードを復号しました。"
+    $dialog.FindName('PasswordBox').Text = $Password
+    $dialog.FindName('CopyButton').Add_Click({
+        [System.Windows.Clipboard]::SetText($Password)
+    })
+    $dialog.FindName('CloseButton').Add_Click({ $dialog.Close() })
+    $dialog.ShowDialog() | Out-Null
+}
+
 function Convert-KeyEventToHotkeyText {
     [CmdletBinding()]
     [OutputType([string])]
@@ -444,6 +498,8 @@ function Get-DisplayServer {
     $hasSshTool = (-not [string]::IsNullOrWhiteSpace($Settings.TeraTermPath)) -or (-not [string]::IsNullOrWhiteSpace($Settings.PuTTYPath))
     $osFamily = Resolve-ServerOSFamily -OS $Server.OS
     $hasPlainPassword = -not [string]::IsNullOrEmpty($Server.Password)
+    $hasProtectedPassword = -not [string]::IsNullOrEmpty($Server.PasswordProtected)
+    $hasKeyFile = -not [string]::IsNullOrWhiteSpace($Server.KeyFile)
     return [PSCustomObject]@{
         Name              = $Server.Name
         OS                = $Server.OS
@@ -455,7 +511,9 @@ function Get-DisplayServer {
         Password          = $Server.Password
         PasswordProtected = $Server.PasswordProtected
         HasPlainPassword  = $hasPlainPassword
+        HasProtectedPassword = $hasProtectedPassword
         KeyFile           = $Server.KeyFile
+        HasKeyFile        = $hasKeyFile
         Environment       = $Server.Environment
         Role              = $Server.Role
         InDevelopment     = $Server.InDevelopment
@@ -923,10 +981,21 @@ function Invoke-ServerConnection {
     if ($Kind -eq 'RDP') {
         if ($Server.OSFamily -ne 'Windows') { $statusBarText.Text = 'RDP は Windows サーバ用です'; return }
         $logContext = Get-ConnectionLogContext -Server $Server -Id 'rdp' -Tool 'rdp'
+        $passwordCopied = $false
+        $rdpPassword = Get-PasswordForServer -Server $Server
+        if (-not [string]::IsNullOrEmpty($rdpPassword)) {
+            [System.Windows.Clipboard]::SetText($rdpPassword)
+            $passwordCopied = $true
+        }
         $r = Start-RdpSession -Host $Server.EffectiveHost -User $Server.User -LogPath $logContext.ToolLogPath
         Write-ConnectionLaunchLog -Result $r -LogContext $logContext -Tool 'rdp'
         if ($r.Success) { Register-CaptureSession -Server $Server -Id 'rdp' -ProcessId $r.ProcessId }
-        $statusBarText.Text = $r.Message
+        if ($r.Success -and $passwordCopied) {
+            $statusBarText.Text = "$($r.Message) / パスワードをクリップボードにコピーしました"
+        }
+        else {
+            $statusBarText.Text = $r.Message
+        }
         return
     }
 
@@ -1110,25 +1179,42 @@ $serverGrid.Add_MouseDoubleClick({
     param($sender, $e)
 
     $cell = Find-VisualParent -Start $e.OriginalSource -Type ([System.Windows.Controls.DataGridCell])
-    if ($null -eq $cell -or $null -eq $cell.Column -or ([string]$cell.Column.Header) -ne 'ユーザー') { return }
+    if ($null -eq $cell) { return }
 
     $server = $cell.DataContext
-    if ($null -eq $server -or -not $server.HasPlainPassword) { return }
+    if ($null -eq $server) { return }
 
-    $message = "サーバ '$($server.Name)' の平文 password を暗号化し、YAML を password_protected に書き換えます。`n`n元の password 行は削除されます。続行しますか？"
-    $answer = [System.Windows.MessageBox]::Show($window, $message, '平文パスワードの暗号化', [System.Windows.MessageBoxButton]::OKCancel, [System.Windows.MessageBoxImage]::Warning)
-    if ($answer -ne [System.Windows.MessageBoxResult]::OK) { return }
+    if ($null -ne $cell.Column -and ([string]$cell.Column.Header) -eq 'ユーザー' -and $server.HasPlainPassword) {
+        $message = "サーバ '$($server.Name)' の平文 password を暗号化し、YAML を password_protected に書き換えます。`n`n元の password 行は削除されます。続行しますか？"
+        $answer = [System.Windows.MessageBox]::Show($window, $message, '平文パスワードの暗号化', [System.Windows.MessageBoxButton]::OKCancel, [System.Windows.MessageBoxImage]::Warning)
+        if ($answer -ne [System.Windows.MessageBoxResult]::OK) { return }
 
-    try {
-        $path = Protect-PlainPasswordInServerList -Server $server
-        Sync-ServerList
-        $statusBarText.Text = "平文パスワードを暗号化しました: $path"
+        try {
+            $path = Protect-PlainPasswordInServerList -Server $server
+            Sync-ServerList
+            $statusBarText.Text = "平文パスワードを暗号化しました: $path"
+        }
+        catch {
+            $statusBarText.Text = "暗号化エラー: $($_.Exception.Message)"
+            [System.Windows.MessageBox]::Show($window, $_.Exception.Message, '暗号化エラー', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        }
+        $e.Handled = $true
+        return
     }
-    catch {
-        $statusBarText.Text = "暗号化エラー: $($_.Exception.Message)"
-        [System.Windows.MessageBox]::Show($window, $_.Exception.Message, '暗号化エラー', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+
+    if (-not [string]::IsNullOrEmpty($server.PasswordProtected)) {
+        try {
+            $password = Unprotect-Password -Protected $server.PasswordProtected
+            if ([string]::IsNullOrEmpty($password)) { return }
+            Show-ProtectedPasswordDialog -Server $server -Password $password
+            $statusBarText.Text = "暗号化パスワードを表示し、クリップボードにコピーしました: $($server.Name)"
+        }
+        catch {
+            $statusBarText.Text = "復号エラー: $($_.Exception.Message)"
+            [System.Windows.MessageBox]::Show($window, $_.Exception.Message, '復号エラー', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        }
+        $e.Handled = $true
     }
-    $e.Handled = $true
 })
 $serverGrid.AddHandler(
     [System.Windows.Controls.Button]::ClickEvent,

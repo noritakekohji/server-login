@@ -429,7 +429,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="接続先" Binding="{Binding EffectiveHost}" Width="150" ElementStyle="{StaticResource GridTextBlockStyle}" />
-                        <DataGridTemplateColumn Header="ユーザー" Width="120" CellStyle="{StaticResource PlainPasswordUserCellStyle}">
+                        <DataGridTemplateColumn Header="ユーザー" Width="142" CellStyle="{StaticResource PlainPasswordUserCellStyle}">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -440,6 +440,7 @@
                                                 Background="#F59E0B"
                                                 BorderBrush="#D97706"
                                                 BorderThickness="1"
+                                                ToolTip="平文パスワード"
                                                 Visibility="Collapsed">
                                             <TextBlock Text="!"
                                                        Foreground="#FFFFFF"
@@ -449,11 +450,49 @@
                                                        VerticalAlignment="Center"
                                                        Margin="0,-1,0,0" />
                                         </Border>
+                                        <Border x:Name="KeyFileIcon"
+                                                Width="14"
+                                                Height="14"
+                                                Margin="0,0,5,0"
+                                                Background="#E0F2FE"
+                                                BorderBrush="#7DD3FC"
+                                                BorderThickness="1"
+                                                ToolTip="鍵ファイル"
+                                                Visibility="Collapsed">
+                                            <TextBlock Text="&#xE8D7;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="#0369A1"
+                                                       FontSize="9"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <Border x:Name="ProtectedPasswordIcon"
+                                                Width="14"
+                                                Height="14"
+                                                Margin="0,0,5,0"
+                                                Background="#EDE9FE"
+                                                BorderBrush="#C4B5FD"
+                                                BorderThickness="1"
+                                                ToolTip="暗号化パスワード"
+                                                Visibility="Collapsed">
+                                            <TextBlock Text="&#xE72E;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="#6D28D9"
+                                                       FontSize="9"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
                                         <TextBlock Text="{Binding User}" Style="{StaticResource GridTextBlockStyle}" />
                                     </StackPanel>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding HasPlainPassword}" Value="True">
                                             <Setter TargetName="PlainPasswordIcon" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasKeyFile}" Value="True">
+                                            <Setter TargetName="KeyFileIcon" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasProtectedPassword}" Value="True">
+                                            <Setter TargetName="ProtectedPasswordIcon" Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>

@@ -7,6 +7,7 @@
 # 必須キー: name
 # OS: Linux または Windows（既定 Linux）
 # host 未指定 → name で接続
+# key_file が正式キー。既存ファイル互換として keyfile / key も読み取り可能。
 # password 未指定かつ key_file 未指定 → 接続時にダイアログで入力
 # password は平文保存可能だが非推奨。GUI の「パスワード暗号化」で
 # DPAPI 暗号化文字列を生成して password_protected に貼ること。
