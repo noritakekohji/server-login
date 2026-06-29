@@ -35,6 +35,31 @@ function _QuoteIfNeeded {
     return $Value
 }
 
+function _GetLocalRdpUserName {
+    param([string]$User)
+    if ([string]::IsNullOrWhiteSpace($User)) { return '' }
+    if ($User -match '[\\@]') { return $User }
+    return ".\$User"
+}
+
+function _NewRdpFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Host,
+        [string]$User
+    )
+
+    $path = Join-Path ([System.IO.Path]::GetTempPath()) ("server-login-{0}.rdp" -f ([guid]::NewGuid().ToString('N')))
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add("full address:s:$Host")
+    if (-not [string]::IsNullOrWhiteSpace($User)) {
+        $lines.Add("username:s:$(_GetLocalRdpUserName -User $User)")
+    }
+    $lines.Add('prompt for credentials:i:1')
+    $lines.Add('authentication level:i:2')
+    [System.IO.File]::WriteAllLines($path, $lines.ToArray(), (New-Object System.Text.UTF8Encoding $false))
+    return $path
+}
+
 function _StartProcess {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
@@ -67,11 +92,18 @@ function Start-RdpSession {
     [OutputType([PSCustomObject])]
     param(
         [Parameter(Mandatory = $true)][string]$Host,
+        [string]$User,
         [string]$LogPath
     )
     if ([string]::IsNullOrWhiteSpace($Host)) {
         return _BuildResult -Success $false -Message 'ホスト未指定' -Command 'mstsc.exe' -Arguments @()
     }
+
+    if (-not [string]::IsNullOrWhiteSpace($User)) {
+        $rdpPath = _NewRdpFile -Host $Host -User $User
+        return _StartProcess -FilePath 'mstsc.exe' -ArgumentList @($rdpPath) -ToolName 'リモートデスクトップ (mstsc)'
+    }
+
     return _StartProcess -FilePath 'mstsc.exe' -ArgumentList @("/v:$Host") -ToolName 'リモートデスクトップ (mstsc)'
 }
 
@@ -93,11 +125,12 @@ function Start-TeraTermSession {
     }
     $argsList = New-Object System.Collections.Generic.List[string]
     $argsList.Add($Host)
+    $argsList.Add('/ssh')
     if (-not [string]::IsNullOrWhiteSpace($User)) { $argsList.Add("/user=$User") }
     if (-not [string]::IsNullOrWhiteSpace($LogPath)) { $argsList.Add("/L=$(_QuoteIfNeeded $LogPath)") }
     if (-not [string]::IsNullOrWhiteSpace($KeyFile)) {
         $argsList.Add("/auth=publickey")
-        $argsList.Add("/keyfile=$KeyFile")
+        $argsList.Add("/keyfile=$(_QuoteIfNeeded $KeyFile)")
         if (-not [string]::IsNullOrWhiteSpace($Password)) { $argsList.Add("/passwd=$Password") }
     }
     elseif (-not [string]::IsNullOrWhiteSpace($Password)) {
@@ -176,7 +209,7 @@ function Start-WinSCPSession {
     $url = "sftp://${userPart}${Host}/"
     $argsList.Add($url)
     if (-not [string]::IsNullOrWhiteSpace($KeyFile)) {
-        $argsList.Add("/privatekey=$KeyFile")
+        $argsList.Add("/privatekey=$(_QuoteIfNeeded $KeyFile)")
     }
     if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
         $argsList.Add("/log=$(_QuoteIfNeeded $LogPath)")

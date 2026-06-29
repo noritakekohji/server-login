@@ -22,16 +22,17 @@ Describe 'ConnectionLauncher' {
         It 'Tera Term with password builds /auth=password and /passwd=' {
             $r = Start-TeraTermSession -ExecutablePath $script:DummyExe -Host '10.0.0.1' -User 'u1' -Password 'p1'
             $r.Success | Should -BeTrue
+            $r.Args | Should -Contain '/ssh'
             $r.Args | Should -Contain '/auth=password'
             $r.Args | Should -Contain '/passwd=p1'
             $r.Args | Should -Contain '/user=u1'
         }
 
         It 'Tera Term with key file builds /auth=publickey and /keyfile=' {
-            $r = Start-TeraTermSession -ExecutablePath $script:DummyExe -Host '10.0.0.1' -User 'u1' -KeyFile 'C:\k.pem'
+            $r = Start-TeraTermSession -ExecutablePath $script:DummyExe -Host '10.0.0.1' -User 'u1' -KeyFile 'C:\key files\k.pem'
             $r.Success | Should -BeTrue
             $r.Args | Should -Contain '/auth=publickey'
-            $r.Args | Should -Contain '/keyfile=C:\k.pem'
+            $r.Args | Should -Contain '/keyfile="C:\key files\k.pem"'
         }
 
         It 'Tera Term adds log path when provided' {
@@ -65,14 +66,36 @@ Describe 'ConnectionLauncher' {
         }
 
         It 'WinSCP with key omits password from URL and adds /privatekey' {
-            $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -User 'u' -Password 'unused' -KeyFile 'C:\k.ppk'
+            $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -User 'u' -Password 'unused' -KeyFile 'C:\key files\k.ppk'
             ($r.Args[0]) | Should -BeLike 'sftp://u@h/*'
-            $r.Args | Should -Contain '/privatekey=C:\k.ppk'
+            $r.Args | Should -Contain '/privatekey="C:\key files\k.ppk"'
         }
 
         It 'WinSCP adds log path when provided' {
             $r = Start-WinSCPSession -ExecutablePath $script:DummyExe -Host 'h' -LogPath 'C:\logs\winscp.log'
             $r.Args | Should -Contain '/log=C:\logs\winscp.log'
+        }
+
+        It 'RDP launches mstsc with a local-account .rdp file without cmdkey' {
+            $calls = New-Object System.Collections.Generic.List[object]
+            Mock -ModuleName ConnectionLauncher Start-Process {
+                $calls.Add([PSCustomObject]@{
+                    FilePath     = $FilePath
+                    ArgumentList = $ArgumentList
+                })
+            }
+
+            $r = Start-RdpSession -Host 'winhost' -User 'localuser'
+
+            $r.Success | Should -BeTrue
+            $calls.Count | Should -Be 1
+            $calls[0].FilePath | Should -Be 'mstsc.exe'
+            $rdpPath = [string]$calls[0].ArgumentList[0]
+            $rdpText = Get-Content -LiteralPath $rdpPath -Raw -Encoding UTF8
+            $rdpText | Should -Match 'full address:s:winhost'
+            $rdpText | Should -Match 'username:s:\.\\localuser'
+            $rdpText | Should -Not -Match 'password'
+            Remove-Item -LiteralPath $rdpPath -Force
         }
     }
 

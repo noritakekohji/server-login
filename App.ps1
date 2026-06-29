@@ -921,16 +921,16 @@ function Invoke-ServerConnection {
     }
 
     if ($Kind -eq 'RDP') {
-        if ($Server.OS -ne 'Windows') { $statusBarText.Text = 'RDP は Windows サーバ用です'; return }
+        if ($Server.OSFamily -ne 'Windows') { $statusBarText.Text = 'RDP は Windows サーバ用です'; return }
         $logContext = Get-ConnectionLogContext -Server $Server -Id 'rdp' -Tool 'rdp'
-        $r = Start-RdpSession -Host $Server.EffectiveHost -LogPath $logContext.ToolLogPath
+        $r = Start-RdpSession -Host $Server.EffectiveHost -User $Server.User -LogPath $logContext.ToolLogPath
         Write-ConnectionLaunchLog -Result $r -LogContext $logContext -Tool 'rdp'
         if ($r.Success) { Register-CaptureSession -Server $Server -Id 'rdp' -ProcessId $r.ProcessId }
         $statusBarText.Text = $r.Message
         return
     }
 
-    if ($Server.OS -ne 'Linux') {
+    if ($Server.OSFamily -ne 'Linux') {
         $statusBarText.Text = "$Kind は Linux サーバ用です"
         return
     }
