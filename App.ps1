@@ -216,7 +216,7 @@ function Resolve-Password {
     param($Server)
     $pw = Get-PasswordForServer -Server $Server
     if ($null -ne $pw -and $pw -ne '') { return $pw }
-    if (-not [string]::IsNullOrEmpty($Server.KeyFile)) { return '' }   # key auth, no password needed
+    if ((-not [string]::IsNullOrEmpty($Server.KeyFile)) -or (-not [string]::IsNullOrEmpty($Server.KeyFilePpk))) { return '' }   # key auth, no password needed
     # No password and no key -> prompt
     return (Read-PasswordInteractively -Prompt "ホスト '$($Server.Name)' のパスワード")
 }
@@ -488,7 +488,7 @@ function Get-DisplayServer {
     $osFamily = Resolve-ServerOSFamily -OS $Server.OS
     $hasPlainPassword = -not [string]::IsNullOrEmpty($Server.Password)
     $hasProtectedPassword = -not [string]::IsNullOrEmpty($Server.PasswordProtected)
-    $hasKeyFile = -not [string]::IsNullOrWhiteSpace($Server.KeyFile)
+    $hasKeyFile = (-not [string]::IsNullOrWhiteSpace($Server.KeyFile)) -or (-not [string]::IsNullOrWhiteSpace($Server.KeyFilePpk))
     return [PSCustomObject]@{
         Name              = $Server.Name
         OS                = $Server.OS
@@ -502,6 +502,7 @@ function Get-DisplayServer {
         HasPlainPassword  = $hasPlainPassword
         HasProtectedPassword = $hasProtectedPassword
         KeyFile           = $Server.KeyFile
+        KeyFilePpk        = $Server.KeyFilePpk
         HasKeyFile        = $hasKeyFile
         Environment       = $Server.Environment
         Role              = $Server.Role
@@ -991,7 +992,8 @@ function Invoke-ServerConnection {
 
     if ($Kind -eq 'SFTP') {
         $logContext = Get-ConnectionLogContext -Server $Server -Id 'winscp' -Tool 'winscp'
-        $r = Start-WinSCPSession -ExecutablePath $settings.WinSCPPath -Host $Server.EffectiveHost -User $Server.User -Password $pw -KeyFile $Server.KeyFile -LogPath $logContext.ToolLogPath
+        $winscpKey = if (-not [string]::IsNullOrWhiteSpace($Server.KeyFilePpk)) { $Server.KeyFilePpk } else { $Server.KeyFile }
+        $r = Start-WinSCPSession -ExecutablePath $settings.WinSCPPath -Host $Server.EffectiveHost -User $Server.User -Password $pw -KeyFile $winscpKey -LogPath $logContext.ToolLogPath
         Write-ConnectionLaunchLog -Result $r -LogContext $logContext -Tool 'winscp'
         if ($r.Success) { Register-CaptureSession -Server $Server -Id 'winscp' -ProcessId $r.ProcessId }
         $statusBarText.Text = $r.Message
@@ -1008,7 +1010,8 @@ function Invoke-ServerConnection {
 
     if ($usePuTTY) {
         $logContext = Get-ConnectionLogContext -Server $Server -Id 'putty' -Tool 'putty'
-        $r = Start-PuTTYSession -ExecutablePath $settings.PuTTYPath -Host $Server.EffectiveHost -User $Server.User -Password $pw -KeyFile $Server.KeyFile -LogPath $logContext.ToolLogPath
+        $puttyKey = if (-not [string]::IsNullOrWhiteSpace($Server.KeyFilePpk)) { $Server.KeyFilePpk } else { $Server.KeyFile }
+        $r = Start-PuTTYSession -ExecutablePath $settings.PuTTYPath -Host $Server.EffectiveHost -User $Server.User -Password $pw -KeyFile $puttyKey -LogPath $logContext.ToolLogPath
         Write-ConnectionLaunchLog -Result $r -LogContext $logContext -Tool 'putty'
         if ($r.Success) { Register-CaptureSession -Server $Server -Id 'putty' -ProcessId $r.ProcessId }
     }

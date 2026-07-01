@@ -139,6 +139,14 @@ function ConvertTo-Server {
         }
     }
 
+    $keyFilePpk = ''
+    foreach ($keyName in 'key_file_ppk','keyfile_ppk','ppk_file','private_key_ppk') {
+        if ($Item.ContainsKey($keyName)) {
+            $keyFilePpk = [string]$Item[$keyName]
+            break
+        }
+    }
+
     return [PSCustomObject]@{
         Name              = $name
         OS                = $os
@@ -149,6 +157,7 @@ function ConvertTo-Server {
         Password          = if ($Item.ContainsKey('password')) { [string]$Item['password'] } else { '' }
         PasswordProtected = if ($Item.ContainsKey('password_protected')) { [string]$Item['password_protected'] } else { '' }
         KeyFile           = $keyFile
+        KeyFilePpk        = $keyFilePpk
         Environment       = if ($Item.ContainsKey('environment')) { [string]$Item['environment'] } else { '' }
         Role              = if ($Item.ContainsKey('role')) { [string]$Item['role'] } else { '' }
         InDevelopment     = $inDev
